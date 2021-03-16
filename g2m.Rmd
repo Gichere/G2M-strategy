@@ -1,18 +1,164 @@
 ---
-title: "R Notebook"
-output: html_notebook
+title: "G2M"
+author: "Francis Gichere"
+date: "13/03/2021"
+output: html_document
 ---
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
 
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
 
-```{r}
-plot(cars)
+### Loading libraries to be used
+```{r, message=FALSE, warning=FALSE}
+### Loading the required libraries
+library(tidyverse)
+library(lubridate)
+library(tidyr)
+library(dlookr)
+library(stringr)
+library(ggpubr)
+library(knitr)
+library(pastecs)
+library(reshape2)
+library(ggcorrplot)
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+#loading the datasets
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+```{r}
+#Cab Data
+cab<-read_csv("Cab_Data.csv")
+#City data
+city<-read_csv("City.csv")
+#Customer ID dataset
+customerID<-read_csv("Customer_ID.csv")
+#Transaction Id data
+transactionID<-read_csv("Transaction_ID.csv")
 
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+```
+
+### Checking the structure of the data sets and data types
+#### 1. Cab Data
+```{r}
+# 1. Cab Data
+glimpse(cab)
+#Changing Date of travel from character to date data type
+cab$`Date of Travel`<-dmy(cab$`Date of Travel`)
+#saving the new dataset
+write_csv(cab, "cab.csv")
+#Loading the saved dataset
+cab_data<-read_csv("cab.csv")
+head(cab_data)
+```
+
+#### 2. City data
+
+```{r}
+glimpse(city)
+head(city)
+```
+
+#### 3. Customer ID data
+
+```{r}
+glimpse(customerID)
+head(customerID)
+```
+
+#### 4. Transactions data
+
+```{r}
+glimpse(transactionID)
+head(transactionID)
+```
+
+### Combining data sets
+Combining Transaction ID data with cab data set
+```{r}
+cab_trans<-left_join(transactionID, cab_data, by="Transaction_ID")
+#checking the structure of the new data set
+glimpse(cab_trans)
+#taking a look at the first few rows of the data
+head(cab_trans)
+#saving the new data set to the working directory
+write_csv(cab_trans, "cab_trans.csv")
+```
+
+Joining customer ID dataset with TransactionId and Cab data
+
+```{r}
+master_data<-left_join(cab_trans, customerID, by="Customer_ID")
+glimpse(master_data)
+## Dropping the rows with missing values
+master_clean<-master_data %>% drop_na()
+glimpse(master_clean)
+#Adding a calculated column for profit margin
+master_clean$Profit_margin<-(master_clean$`Price Charged` - master_clean$`Cost of Trip`)
+glimpse(master_clean)
+#Writing the final data set to be used in the analysis
+
+write_csv(master_clean, "g2m.csv")
+```
+
+### Exploratory Data Analysis
+
+```{r}
+final_data<-read_csv("g2m.csv")
+head(final_data)
+glimpse(final_data)
+```
+
+####Defining Gender and Company as factors
+```{r}
+final_data$Company<-as.factor(final_data$Company)
+final_data$Gender<-as.factor(final_data$Gender)
+final_data$Payment_Mode<-as.factor(final_data$Payment_Mode)
+### Creating age groups
+final_data$Age_Group<-cut(final_data$Age, c(17,25,32,39,46,53,60,65),
+                          labels = c("18-25",
+                                     "26-32",
+                                     "33-39",
+                                     "40-46",
+                                     "47-53", 
+                                     "54-60",
+                                     "61+"))
+```
+
+
+## Plots
+#### Distributions
+
+```{r}
+# Kilometer traveled 
+ggplot(final_data, mapping = aes(x=`KM Travelled`))+
+  geom_histogram(mapping = aes(color=Company), bins = 30)
+```
+
+```{r}
+# Price charged
+ggplot(final_data, mapping = aes(x=`Price Charged`))+
+  geom_histogram(mapping = aes(color=Company), bins = 30)
+```
+
+```{r}
+# Cost of trip
+ggplot(final_data, mapping = aes(x=`Cost of Trip`))+
+  geom_histogram(mapping = aes(color=Company), bins = 30)
+```
+
+```{r}
+# Income (USD/Month)
+ggplot(final_data, mapping = aes(x=`Income (USD/Month)`))+
+  geom_histogram(mapping = aes(color=Gender), bins = 30)
+```
+
+```{r}
+# Profit Margin
+ggplot(final_data, mapping = aes(x=Profit_margin))+
+  geom_histogram(mapping = aes(color=Company), bins = 30)
+```
+
+#### Checking Associations between variables
+```{r}
+
+```
+
